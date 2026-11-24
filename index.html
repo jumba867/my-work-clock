@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#152b45">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Work Clock">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>My Work Clock</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy:#152b45; --blue:#245b91; --ink:#172536; --muted:#64748b;
+      --line:#e4eaf0; --surface:#ffffff; --canvas:#f3f6f9; --green:#16865b;
+      --green-bg:#e9f7f0; --amber:#a65b08; --amber-bg:#fff4df;
+      --red:#b42318; --red-bg:#fff0ee; --blue-bg:#edf4fb;
+      --shadow:0 8px 26px rgba(21,43,69,.07);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--canvas); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+    button,input,select { font:inherit; }
+    .app { max-width:680px; margin:0 auto; min-height:100dvh; padding:env(safe-area-inset-top) 16px calc(28px + env(safe-area-inset-bottom)); }
+    header { padding:22px 4px 18px; color:var(--navy); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .eyebrow { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.13em; font-weight:750; }
+    h1 { font-size:27px; line-height:1.1; margin:5px 0 5px; letter-spacing:-.04em; }
+    .sub { color:var(--muted); font-size:13px; }
+    .clock { background:var(--navy); color:#fff; border-radius:15px; padding:9px 12px; text-align:right; min-width:102px; box-shadow:var(--shadow); }
+    .clock strong { display:block; font-size:19px; font-variant-numeric:tabular-nums; }
+    .clock small { display:block; opacity:.72; font-size:10px; margin-top:2px; }
+    .panel { background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:17px; box-shadow:var(--shadow); margin-bottom:13px; }
+    .date-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .date-row h2 { margin:0; font-size:16px; }
+    input[type=date],input[type=month] { border:1px solid var(--line); border-radius:10px; padding:9px 10px; background:#fff; color:var(--ink); min-height:40px; }
+    .state-row { margin-top:13px; display:flex; align-items:center; gap:8px; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#94a3b8; }
+    .state { font-size:13px; font-weight:700; }
+    .pill { margin-left:auto; border-radius:99px; padding:5px 9px; background:var(--blue-bg); color:var(--blue); font-size:11px; font-weight:750; }
+    .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:17px; }
+    .stat { background:#f7f9fb; border:1px solid #edf1f5; padding:12px; border-radius:14px; }
+    .stat .label { font-size:11px; color:var(--muted); font-weight:650; }
+    .stat .value { font-size:23px; margin-top:5px; font-weight:800; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+    .progress-head { display:flex; justify-content:space-between; align-items:center; margin:15px 1px 7px; font-size:12px; color:var(--muted); }
+    .track { height:9px; background:#e9eef3; border-radius:99px; overflow:hidden; }
+    .fill { height:100%; width:0; background:var(--green); border-radius:99px; transition:width .2s; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+    .btn { border:0; min-height:52px; padding:12px 13px; border-radius:13px; font-weight:750; cursor:pointer; display:flex; justify-content:center; align-items:center; gap:8px; }
+    .btn:disabled { opacity:.38; cursor:not-allowed; }
+    .primary { background:var(--navy); color:#fff; }
+    .break { background:var(--amber-bg); color:var(--amber); border:1px solid #f1dfbd; }
+    .finish { background:var(--green-bg); color:var(--green); border:1px solid #ccebdc; }
+    .soft { background:#f3f6f9; color:var(--ink); border:1px solid var(--line); }
+    .danger { background:var(--red-bg); color:var(--red); border:1px solid #f3d0cc; }
+    .section-title { font-size:14px; font-weight:800; margin:0 0 12px; }
+    .event-list { display:flex; flex-direction:column; gap:0; }
+    .event { display:flex; align-items:center; gap:11px; padding:10px 0; border-top:1px solid #eef1f4; }
+    .event:first-child { border-top:0; }
+    .event-icon { width:32px; height:32px; border-radius:10px; display:grid; place-items:center; background:#f1f5f9; font-size:15px; }
+    .event-main { flex:1; min-width:0; }
+    .event-main strong { display:block; font-size:13px; }
+    .event-main small { color:var(--muted); font-size:11px; }
+    .event-time { font-size:13px; font-weight:750; font-variant-numeric:tabular-nums; }
+    .tools { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .tools .btn { min-height:45px; font-size:12px; padding:9px 6px; }
+    .hint { color:var(--muted); font-size:11px; line-height:1.5; margin:11px 1px 0; }
+    .month-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
+    .month-top .section-title { margin:0; }
+    .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .sum { background:#f7f9fb; border:1px solid #edf1f5; border-radius:12px; padding:10px; min-height:68px; }
+    .sum b { display:block; font-size:21px; font-variant-numeric:tabular-nums; }
+    .sum span { display:block; color:var(--muted); font-size:10px; margin-top:3px; }
+    .month-line { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #eef1f4; font-size:12px; }
+    .month-line:last-child { border-bottom:0; }
+    .month-line span:first-child { color:var(--muted); }
+    .foot { text-align:center; color:#8290a0; font-size:10px; padding:4px 8px 18px; line-height:1.5; }
+    .modal-back { position:fixed; inset:0; background:rgba(13,27,43,.4); display:none; align-items:flex-end; justify-content:center; padding:14px; z-index:5; }
+    .modal-back.show { display:flex; }
+    .modal { width:min(100%,520px); background:#fff; border-radius:20px; padding:19px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+    .modal h3 { margin:0 0 5px; font-size:18px; }
+    .modal p { color:var(--muted); font-size:12px; margin:0 0 15px; line-height:1.45; }
+    .modal-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .modal-fields { display:grid; gap:10px; margin:12px 0; }
+    .modal-fields label { display:grid; gap:5px; color:var(--muted); font-size:12px; font-weight:700; }
+    .modal-fields select,.modal-fields input { width:100%; min-height:44px; border:1px solid var(--line); border-radius:10px; padding:10px; background:#fff; color:var(--ink); }
+    .modal-actions .btn { min-height:46px; }
+    .modal-close { width:100%; margin-top:9px; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:11px; }
+    .toolbar .btn { min-height:39px; font-size:11px; flex:1; }
+    .notice { font-size:11px; color:var(--muted); line-height:1.5; margin-top:10px; }
+    @media (min-width:560px) { .app { padding-left:22px; padding-right:22px; } .stats { grid-template-columns:repeat(4,1fr); } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="eyebrow">Personal attendance</div>
+      <h1>My Work Clock</h1>
+      <div class="sub">Your daily office punch clock</div>
+    </div>
+    <div class="clock"><strong id="liveClock">--:--</strong><small id="liveDate">Today</small></div>
+  </header>
+
+  <section class="panel">
+    <div class="date-row">
+      <h2>Daily attendance</h2>
+      <input id="selectedDate" type="date" aria-label="Select attendance date">
+    </div>
+    <div class="state-row">
+      <span class="dot" id="statusDot"></span>
+      <span class="state" id="statusText">Not clocked in</span>
+      <span class="pill" id="dayTypePill">10h shift incl. breaks</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="label">Net working time</div><div class="value" id="workTime">00:00</div></div>
+      <div class="stat"><div class="label">Break time</div><div class="value" id="breakTime">00:00</div></div>
+      <div class="stat"><div class="label">Office time remaining</div><div class="value" id="remaining">09:30</div></div>
+      <div class="stat"><div class="label">Expected checkout</div><div class="value" id="expectedOut">—</div></div>
+    </div>
+    <div class="notice" id="shiftPolicyStatus">10-hour shift including breaks · Maximum break 1h 30m · Up to 30m early departure</div>
+    <div class="progress-head"><span>Shift progress (breaks included)</span><strong id="progressText">0%</strong></div>
+    <div class="track"><div class="fill" id="progressFill"></div></div>
+    <div class="actions">
+      <button class="btn primary" id="checkIn">↳ &nbsp;Check In</button>
+      <button class="btn break" id="breakOut">Ⅱ &nbsp;Break Out</button>
+      <button class="btn finish" id="breakIn">▶ &nbsp;Break In</button>
+      <button class="btn soft" id="checkOut">⇥ &nbsp;Check Out</button>
+    </div>
+    <div class="hint" id="actionHint">Tap Check In when you enter the office. Break Out and Break In can be used as many times as needed.</div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">Today's activity</h2>
+    <div class="event-list" id="activityList"><div class="notice">No activity recorded for this date yet.</div></div>
+    <div class="toolbar"><button class="btn soft" id="editPunches">＋ Edit / add missed punch</button></div>
+    <div class="notice">Forgot to tap a button at the right time? Add the punch later using the actual time. Your totals will be recalculated.</div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">Day status</h2>
+    <div class="tools">
+      <button class="btn soft" id="leaveBtn">＋ Leave</button>
+      <button class="btn soft" id="holidayBtn">☼ Holiday</button>
+      <button class="btn danger" id="absentBtn">— Absent</button>
+    </div>
+    <div class="notice">Use Leave for full-day or half-day leave. Mark holidays and absences manually. Saturdays and Sundays are excluded from the default working-day count.</div>
+    <div class="toolbar">
+      <button class="btn soft" id="clearDay">Reset selected day</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="month-top">
+      <h2 class="section-title">Monthly summary</h2>
+      <input id="selectedMonth" type="month" aria-label="Select report month">
+    </div>
+    <div class="summary-grid">
+      <div class="sum"><b id="presentCount">0</b><span>Present days</span></div>
+      <div class="sum"><b id="leaveCount">0</b><span>Leave days*</span></div>
+      <div class="sum"><b id="absentCount">0</b><span>Absent days</span></div>
+      <div class="sum"><b id="holidayCount">0</b><span>Holidays</span></div>
+      <div class="sum"><b id="unmarkedCount">0</b><span>Unmarked weekdays</span></div>
+      <div class="sum"><b id="weekendCount">0</b><span>Weekend days</span></div>
+    </div>
+    <div style="margin-top:13px">
+      <div class="month-line"><span>Total net working time</span><strong id="monthWork">0h 00m</strong></div>
+      <div class="month-line"><span>Total break time</span><strong id="monthBreak">0h 00m</strong></div>
+      <div class="month-line"><span>Days target met</span><strong id="targetMet">0</strong></div>
+      <div class="month-line"><span>Days below target</span><strong id="belowTarget">0</strong></div>
+    </div>
+    <div class="notice">*Half-day leave is counted as 0.5 leave day. Present days are days with a completed or active office check-in. Unmarked weekdays are not automatically treated as absences.</div>
+    <div class="toolbar">
+      <button class="btn soft" id="exportCsv">Export month CSV</button>
+      <button class="btn soft" id="backupJson">Back up all data</button>
+      <button class="btn soft" id="restoreJson">Restore backup</button>
+      <input id="restoreFile" type="file" accept="application/json" hidden>
+    </div>
+  </section>
+  <div class="foot">Saved on this device and browser. Export a backup regularly so you can restore your records if you change or reset your phone.</div>
+</div>
+
+<div class="modal-back" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <h3 id="modalTitle">Choose leave type</h3>
+    <p id="modalText">Select the type of leave to record for this date.</p>
+    <div class="modal-fields" id="modalFields"></div>
+    <div class="modal-actions" id="modalActions"></div>
+    <button class="btn soft modal-close" id="modalClose">Cancel</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEY = "my-work-clock-v1";
+  const SHIFT_MS = 10 * 60 * 60 * 1000;
+  const MAX_BREAK_MS = 90 * 60 * 1000;
+  const MAX_EARLY_MS = 30 * 60 * 1000;
+  const HALF_TARGET = 4.25 * 60 * 60 * 1000;
+  const $ = id => document.getElementById(id);
+  let store = loadStore();
+  let selected = localDateKey(new Date());
+  $("selectedDate").value = selected;
+  $("selectedMonth").value = selected.slice(0,7);
+
+  function loadStore() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || {days:{}}; }
+    catch { return {days:{}}; }
+  }
+  function saveStore() { localStorage.setItem(KEY, JSON.stringify(store)); }
+  function localDateKey(d) {
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+  function nowIso() { return new Date().toISOString(); }
+  function dateForKey(key) { const [y,m,d]=key.split("-").map(Number); return new Date(y,m-1,d,12,0,0); }
+  function currentDay() { return store.days[selected] || null; }
+  function ensureDay() {
+    if (!store.days[selected]) store.days[selected] = {kind:"work", clockIn:null, clockOut:null, breaks:[], events:[]};
+    return store.days[selected];
+  }
+  function fmtDuration(ms) {
+    ms = Math.max(0, Math.floor(ms/60000)*60000);
+    const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000);
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+  }
+  function fmtHM(ms) {
+    ms=Math.max(0,Math.floor(ms/60000));
+    const h=Math.floor(ms/60), m=ms%60;
+    return `${h}h ${String(m).padStart(2,"0")}m`;
+  }
+  function fmtTime(value) {
+    if (!value) return "—";
+    return new Date(value).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+  }
+  function breakMs(day, now=new Date()) {
+    if (!day) return 0;
+    return (day.breaks||[]).reduce((sum,b) => {
+      const start=new Date(b.start).getTime(), end=b.end ? new Date(b.end).getTime() : now.getTime();
+      return sum + Math.max(0,end-start);
+    },0);
+  }
+  function workMs(day, now=new Date()) {
+    if (!day || !day.clockIn) return 0;
+    const end=day.clockOut ? new Date(day.clockOut).getTime() : now.getTime();
+    const gross=Math.max(0,end-new Date(day.clockIn).getTime());
+    return Math.max(0,gross-breakMs(day,now));
+  }
+  // Full-day policy: 10h total at the office, including breaks.
+  // Up to 30m early departure is allowed when total breaks are 0–60m.
+  // Between 60m and 90m of breaks, each extra break minute removes
+  // one minute of the early-departure allowance. The break cap is 90m.
+  function earlyAllowanceMs(day, now=new Date()) {
+    const totalBreak = breakMs(day, now);
+    return Math.min(MAX_EARLY_MS, Math.max(0, MAX_BREAK_MS - totalBreak));
+  }
+  function requiredOfficeMs(day, now=new Date()) {
+    if (day && day.kind==="halfLeave") return HALF_TARGET + breakMs(day, now);
+    return SHIFT_MS - earlyAllowanceMs(day, now);
+  }
+  function officeElapsedMs(day, end=new Date()) {
+    if (!day || !day.clockIn) return 0;
+    const finish = day.clockOut ? new Date(day.clockOut).getTime() : end.getTime();
+    return Math.max(0, finish - new Date(day.clockIn).getTime());
+  }
+  function targetMet(day, end=new Date()) {
+    if (!day || !day.clockIn) return false;
+    if (day.kind==="halfLeave") return workMs(day, end) >= HALF_TARGET;
+    return officeElapsedMs(day, end) >= requiredOfficeMs(day, end);
+  }
+  function isActive(day) { return !!(day && day.clockIn && !day.clockOut); }
+  function onBreak(day) {
+    return !!(day && day.breaks && day.breaks.length && !day.breaks[day.breaks.length-1].end);
+  }
+  function logEvent(day,type,at) { day.events=day.events||[]; day.events.push({type,at}); }
+  function setStatus(text,color,pill) {
+    $("statusText").textContent=text;
+    $("statusDot").style.background=color;
+    $("dayTypePill").textContent=pill || "10h shift incl. breaks";
+  }
+  function update() {
+    const day=currentDay(), now=new Date();
+    $("liveClock").textContent=now.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+    $("liveDate").textContent=now.toLocaleDateString([], {weekday:"short",month:"short",day:"numeric"});
+    const work=workMs(day,now), br=breakMs(day,now);
+    const officeElapsed=officeElapsedMs(day,now);
+    const requiredOffice=requiredOfficeMs(day,now);
+    const remaining=Math.max(0,requiredOffice-officeElapsed);
+    $("workTime").textContent=fmtDuration(work);
+    $("breakTime").textContent=fmtDuration(br);
+    $("remaining").textContent=fmtDuration(remaining);
+    const pct=Math.min(100,Math.round(officeElapsed/requiredOffice*100));
+    $("progressFill").style.width=pct+"%";
+    $("progressText").textContent=pct+"%";
+    let expected="—";
+    if (day && day.clockIn && !day.clockOut) {
+      const projected=new Date(new Date(day.clockIn).getTime()+requiredOffice);
+      expected=projected.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+    } else if (day && day.clockOut) expected="Completed";
+    $("expectedOut").textContent=expected;
+
+    let status="Not clocked in", color="#94a3b8", pill="10h shift incl. breaks";
+    if (day) {
+      if (day.kind==="fullLeave") { status="Full-day leave"; color="#245b91"; pill="Leave"; }
+      else if (day.kind==="holiday") { status="Holiday"; color="#a65b08"; pill="Holiday"; }
+      else if (day.kind==="absent") { status="Marked absent"; color="#b42318"; pill="Absent"; }
+      else if (day.clockOut) { status=day.kind==="halfLeave"?"Checked out · half-day leave":"Checked out"; color="#16865b"; pill=targetMet(day,now)?"Shift target met":"Below shift target"; }
+      else if (onBreak(day)) { status=day.kind==="halfLeave"?"On break · half-day leave":"On break"; color="#a65b08"; pill="Break running"; }
+      else if (day.clockIn) { status=day.kind==="halfLeave"?"Working · half-day leave":"Working"; color="#16865b"; pill=day.kind==="halfLeave"?"4h 15m net-work target":"10h shift incl. breaks"; }
+      else if (day.kind==="halfLeave") { status="Half-day leave"; color="#245b91"; pill="4h 15m net-work target"; }
+    }
+    setStatus(status,color,pill);
+    const earlyMins=Math.floor(earlyAllowanceMs(day,now)/60000);
+    const breakMins=Math.floor(br/60000);
+    const breakLimitText=breakMins>90
+      ? `Break limit exceeded by ${fmtHM(br-MAX_BREAK_MS)}. Maximum allowed break is 1h 30m.`
+      : `Break allowance remaining: ${fmtHM(Math.max(0,MAX_BREAK_MS-br))}.`;
+    const earlyText=day && day.kind==="halfLeave" ? "Half-day leave uses a 4h 15m net-work target." : `Early-departure allowance: ${earlyMins}m. ${breakLimitText}`;
+    $("shiftPolicyStatus").textContent=day && day.kind==="halfLeave" ? earlyText : `10-hour shift including breaks · Maximum break 1h 30m · ${earlyText}`;
+    const isToday = selected === localDateKey(new Date());
+    const canCheckIn=isToday && (!day || (!day.clockIn && !day.clockOut && ["work","halfLeave"].includes(day.kind||"work")));
+    $("checkIn").disabled=!canCheckIn;
+    $("breakOut").disabled=!(isToday && isActive(day) && !onBreak(day) && breakMs(day,now)<MAX_BREAK_MS);
+    $("breakIn").disabled=!(isToday && isActive(day) && onBreak(day));
+    $("checkOut").disabled=!(isToday && isActive(day) && !onBreak(day));
+    $("leaveBtn").disabled=!!(day && day.clockIn && !day.clockOut);
+    $("holidayBtn").disabled=!!(day && day.clockIn && !day.clockOut);
+    $("absentBtn").disabled=!!(day && day.clockIn && !day.clockOut);
+    $("actionHint").textContent = !isToday ? "You are viewing another date. Clock punches are only enabled for today; use this date to review or correct day status." :
+      onBreak(day) ? "Break is running. Tap Break In when you return to resume your work timer." :
+      isActive(day) ? "You are clocked in. Record each break, then Check Out when you leave the office." :
+      day && day.clockOut ? "This day is complete. Reset the day only if you need to correct a mistaken entry." :
+      "Tap Check In when you enter the office. Break Out and Break In can be used as many times as needed.";
+    renderActivity(day);
+    renderMonth();
+  }
+  function renderActivity(day) {
+    const list=$("activityList");
+    const rows=[];
+    if (day && day.clockIn) rows.push({icon:"↳",label:"Office check in",time:day.clockIn});
+    if (day) (day.breaks||[]).forEach((b,i) => {
+      rows.push({icon:"Ⅱ",label:`Break ${i+1} out`,time:b.start});
+      if (b.end) rows.push({icon:"▶",label:`Break ${i+1} in`,time:b.end});
+    });
+    if (day && day.clockOut) rows.push({icon:"⇥",label:"Office check out",time:day.clockOut});
+    if (day && day.kind==="fullLeave") rows.push({icon:"＋",label:"Full-day leave",time:null});
+    if (day && day.kind==="halfLeave") rows.push({icon:"＋",label:"Half-day leave",time:null});
+    if (day && day.kind==="holiday") rows.push({icon:"☼",label:"Holiday",time:null});
+    if (day && day.kind==="absent") rows.push({icon:"—",label:"Marked absent",time:null});
+    if (!rows.length) { list.innerHTML='<div class="notice">No activity recorded for this date yet.</div>'; return; }
+    list.innerHTML=rows.map(r=>`<div class="event"><div class="event-icon">${r.icon}</div><div class="event-main"><strong>${r.label}</strong><small>${r.time ? new Date(r.time).toLocaleDateString([], {hour:"numeric",minute:"2-digit"}) : "Status recorded"}</small></div><div class="event-time">${r.time?fmtTime(r.time):""}</div></div>`).join("");
+  }
+  function renderMonth() {
+    const ym=$("selectedMonth").value, [year,month]=ym.split("-").map(Number);
+    const daysInMonth=new Date(year,month,0).getDate();
+    let present=0,leave=0,absent=0,holiday=0,unmarked=0,weekend=0,totalWork=0,totalBreak=0,met=0,below=0;
+    for(let d=1;d<=daysInMonth;d++) {
+      const key=`${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const date=dateForKey(key), dow=date.getDay(), rec=store.days[key];
+      if(dow===0||dow===6) { weekend++; continue; }
+      if(!rec) { unmarked++; continue; }
+      if(rec.kind==="fullLeave") leave+=1;
+      else if(rec.kind==="halfLeave") { leave+=0.5; if(rec.clockIn) present+=0.5; }
+      else if(rec.kind==="holiday") holiday++;
+      else if(rec.kind==="absent") absent++;
+      else if(rec.clockIn) present++;
+      const reportEnd = rec.clockOut ? new Date(rec.clockOut) :
+        (key===localDateKey(new Date()) ? new Date() : new Date(rec.clockIn || key+"T00:00:00"));
+      const w=workMs(rec, reportEnd);
+      const b=breakMs(rec, reportEnd);
+      totalWork+=w; totalBreak+=b;
+      if(rec.clockOut && rec.clockIn) { if(targetMet(rec, reportEnd)) met++; else below++; }
+    }
+    $("presentCount").textContent=present;
+    $("leaveCount").textContent=leave;
+    $("absentCount").textContent=absent;
+    $("holidayCount").textContent=holiday;
+    $("unmarkedCount").textContent=unmarked;
+    $("weekendCount").textContent=weekend;
+    $("monthWork").textContent=fmtHM(totalWork);
+    $("monthBreak").textContent=fmtHM(totalBreak);
+    $("targetMet").textContent=met;
+    $("belowTarget").textContent=below;
+  }
+  function changeKind(kind) {
+    const day=ensureDay();
+    if (kind==="fullLeave" || kind==="holiday" || kind==="absent") {
+      day.kind=kind; day.clockIn=null; day.clockOut=null; day.breaks=[]; day.events=[];
+    } else day.kind="halfLeave";
+    saveStore(); closeModal(); update();
+  }
+  function showModal(title,description,actions) {
+    $("modalTitle").textContent=title; $("modalText").textContent=description;
+    $("modalFields").innerHTML="";
+    $("modalActions").innerHTML="";
+    actions.forEach(a=>{
+      const b=document.createElement("button"); b.className="btn "+(a.cls||"soft"); b.textContent=a.label;
+      b.onclick=a.run; $("modalActions").appendChild(b);
+    });
+    $("modalBack").classList.add("show");
+  }
+  function closeModal() { $("modalBack").classList.remove("show"); $("modalFields").innerHTML=""; }
+  function localInputValue(iso) {
+    if (!iso) return "";
+    const d=new Date(iso), pad=n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function openPunchEditor() {
+    const day=currentDay();
+    const rec=day || {kind:"work",clockIn:null,clockOut:null,breaks:[]};
+    if (["fullLeave","holiday","absent"].includes(rec.kind)) {
+      showModal("Change day status first","This date is marked as leave, holiday, or absent. Reset or change that status before adding office punches.",[{label:"Close",cls:"soft",run:closeModal}]);
+      return;
+    }
+    const options=[];
+    if (rec.clockIn) options.push({value:"clockIn",label:"Check In (edit existing)",time:rec.clockIn});
+    else options.push({value:"clockIn",label:"Check In (add missed punch)",time:null});
+    (rec.breaks||[]).forEach((b,i)=>{
+      options.push({value:`breakOut:${i}`,label:`Break ${i+1} Out (edit existing)`,time:b.start});
+      options.push({value:`breakIn:${i}`,label:`Break ${i+1} In (${b.end?"edit existing":"add missed punch"})`,time:b.end});
+    });
+    const open=onBreak(rec);
+    if (!open && rec.clockIn && !rec.clockOut) options.push({value:"addBreakOut",label:`Break ${(rec.breaks||[]).length+1} Out (add new break)`,time:null});
+    if (rec.clockIn && !rec.clockOut) options.push({value:"clockOut",label:"Check Out (add missed punch)",time:null});
+    else if (rec.clockOut) options.push({value:"clockOut",label:"Check Out (edit existing)",time:rec.clockOut});
+    showModal("Edit / add missed punch","Choose the event and enter the actual local date and time. The app will validate the sequence before saving.",[]);
+    const fields=$("modalFields");
+    const select=document.createElement("select"); select.id="punchType";
+    options.forEach(o=>{const opt=document.createElement("option");opt.value=o.value;opt.textContent=o.label;select.appendChild(opt);});
+    const label1=document.createElement("label");label1.textContent="Punch to update";label1.appendChild(select);
+    const input=document.createElement("input");input.type="datetime-local";input.id="punchTime";input.required=true;
+    const label2=document.createElement("label");label2.textContent="Actual date and time";label2.appendChild(input);
+    fields.append(label1,label2);
+    const sync=()=>{const opt=options.find(o=>o.value===select.value);input.value=localInputValue(opt?.time);};
+    select.onchange=sync; sync();
+    const save=document.createElement("button");save.className="btn primary";save.textContent="Save punch";
+    save.onclick=()=>{
+      if (!input.value) { alert("Please select the actual date and time."); return; }
+      const chosen=new Date(input.value);
+      if (Number.isNaN(chosen.getTime()) || localDateKey(chosen)!==selected) { alert("The punch time must be on the selected attendance date."); return; }
+      const d=ensureDay(); d.breaks=d.breaks||[];
+      const value=chosen.toISOString(), type=select.value;
+      if (type==="clockIn") d.clockIn=value;
+      else if (type==="clockOut") d.clockOut=value;
+      else if (type==="addBreakOut") d.breaks.push({start:value,end:null});
+      else { const [kind,indexText]=type.split(":"); const b=d.breaks[Number(indexText)]; if (!b) return; if(kind==="breakOut") b.start=value; else b.end=value; }
+      const timeline=[];
+      if(d.clockIn) timeline.push(["Check In",d.clockIn]);
+      d.breaks.forEach((b,i)=>{timeline.push([`Break ${i+1} Out`,b.start]);if(b.end)timeline.push([`Break ${i+1} In`,b.end]);});
+      if(d.clockOut) timeline.push(["Check Out",d.clockOut]);
+      const times=timeline.map(x=>new Date(x[1]).getTime());
+      if(!d.clockIn || times.some(t=>!Number.isFinite(t)) || times.some((t,i)=>i>0&&t<=times[i-1]) || (d.clockOut && d.breaks.some(b=>!b.end))) {
+        // Roll back by reloading the persisted record; invalid edits must not be retained.
+        store=loadStore();
+        alert("That punch order is not valid. Check In must come first, each Break Out must be followed by Break In, and Check Out must be last. No changes were saved.");
+        closeModal(); update(); return;
+      }
+      d.events=[]; timeline.forEach(([name,at])=>logEvent(d,name,at));
+      saveStore(); closeModal(); update();
+    };
+    const cancel=document.createElement("button");cancel.className="btn soft";cancel.textContent="Cancel";cancel.onclick=closeModal;
+    $("modalActions").append(save,cancel);
+  }
+  function download(name,content,type) {
+    const blob=new Blob([content],{type}), url=URL.createObjectURL(blob), a=document.createElement("a");
+    a.href=url; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function csvCell(v) { return '"'+String(v??"").replace(/"/g,'""')+'"'; }
+  function exportMonth() {
+    const ym=$("selectedMonth").value, [year,month]=ym.split("-").map(Number), rows=[];
+    rows.push(["Date","Day Type","Clock In","Break Out/In","Total Break","Clock Out","Net Work","Target","Result"]);
+    const daysInMonth=new Date(year,month,0).getDate();
+    for(let d=1;d<=daysInMonth;d++) {
+      const key=`${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`, rec=store.days[key];
+      if(!rec) continue;
+      const breaks=(rec.breaks||[]).map((b,i)=>`Break ${i+1}: ${fmtTime(b.start)}-${fmtTime(b.end)}`).join("; ");
+      const reportEnd=new Date(rec.clockOut||Date.now());
+      const work=workMs(rec,reportEnd), br=breakMs(rec,reportEnd);
+      const type=rec.kind==="fullLeave"?"Full-day leave":rec.kind==="halfLeave"?"Half-day leave":rec.kind==="holiday"?"Holiday":rec.kind==="absent"?"Absent":"Present";
+      const result=rec.clockOut?(targetMet(rec, new Date(rec.clockOut))?"Shift target met":"Below shift target"):(rec.clockIn?"In progress":"—");
+      const targetLabel=rec.kind==="halfLeave"?"4h 15m net work":fmtHM(requiredOfficeMs(rec, new Date(rec.clockOut||Date.now())))+" office time";
+      rows.push([key,type,fmtTime(rec.clockIn),breaks,fmtHM(br),fmtTime(rec.clockOut),fmtHM(work),targetLabel,result]);
+    }
+    download(`attendance-${ym}.csv`,rows.map(r=>r.map(csvCell).join(",")).join("\n"),"text/csv");
+  }
+  $("checkIn").onclick=()=>{
+    const day=ensureDay();
+    if(day.kind==="fullLeave"||day.kind==="holiday"||day.kind==="absent") return;
+    day.kind=day.kind||"work"; day.clockIn=nowIso(); day.clockOut=null; day.breaks=[]; logEvent(day,"checkIn",day.clockIn); saveStore(); update();
+  };
+  $("breakOut").onclick=()=>{
+    const day=currentDay(); if(!isActive(day)||onBreak(day)) return;
+    if(breakMs(day)>=MAX_BREAK_MS) { alert("The maximum break allowance of 1 hour 30 minutes has already been used."); return; }
+    const t=nowIso(); day.breaks.push({start:t,end:null}); logEvent(day,"breakOut",t); saveStore(); update();
+  };
+  $("breakIn").onclick=()=>{
+    const day=currentDay(); if(!onBreak(day)) return;
+    const t=nowIso(); day.breaks[day.breaks.length-1].end=t; logEvent(day,"breakIn",t); saveStore(); update();
+  };
+  $("checkOut").onclick=()=>{
+    const day=currentDay(); if(!isActive(day)||onBreak(day)) return;
+    day.clockOut=nowIso(); logEvent(day,"checkOut",day.clockOut); saveStore(); update();
+  };
+  $("editPunches").onclick=openPunchEditor;
+  $("leaveBtn").onclick=()=>showModal("Mark leave", "Choose whether this date is a full-day or half-day leave. Half-day leave retains a 4h 15m net-working-time target if you also clock in.",[
+    {label:"Full-day leave",cls:"primary",run:()=>changeKind("fullLeave")},
+    {label:"Half-day leave",cls:"finish",run:()=>changeKind("halfLeave")}
+  ]);
+  $("holidayBtn").onclick=()=>showModal("Mark holiday","This will mark the selected date as a holiday and clear any punches for that date.",[
+    {label:"Mark holiday",cls:"primary",run:()=>changeKind("holiday")}
+  ]);
+  $("absentBtn").onclick=()=>showModal("Mark absent","Use this only for a scheduled working day when you did not attend.",[
+    {label:"Mark absent",cls:"danger",run:()=>changeKind("absent")}
+  ]);
+  $("clearDay").onclick=()=>showModal("Reset selected day","This permanently clears the saved attendance punches and status for this date on this device.",[
+    {label:"Reset day",cls:"danger",run:()=>{delete store.days[selected];saveStore();closeModal();update();}}
+  ]);
+  $("modalClose").onclick=closeModal;
+  $("modalBack").onclick=e=>{if(e.target===$("modalBack"))closeModal();};
+  $("selectedDate").onchange=e=>{selected=e.target.value||localDateKey(new Date());update();};
+  $("selectedMonth").onchange=renderMonth;
+  $("exportCsv").onclick=exportMonth;
+  $("backupJson").onclick=()=>download("work-clock-backup.json",JSON.stringify(store,null,2),"application/json");
+  $("restoreJson").onclick=()=>$("restoreFile").click();
+  $("restoreFile").onchange=async e=>{
+    const f=e.target.files[0]; if(!f)return;
+    try {
+      const parsed=JSON.parse(await f.text());
+      if(!parsed || typeof parsed.days!=="object") throw new Error("Invalid backup");
+      store=parsed; saveStore(); update(); alert("Backup restored.");
+    } catch { alert("Could not restore this file. Please select a valid Work Clock JSON backup."); }
+    e.target.value="";
+  };
+  setInterval(update,1000);
+  update();
+})();
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  }
+</script>
+</body>
+</html>
